@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>WebRTC Data Channel Echo Server Example</title>
+</head>
+
+<body>
+  <input type="button" value="Connect and Send" id="setready">
+  <script type="module">
+
+    let peer = new RTCPeerConnection({
+      iceCandidatePoolSize: 16,
+      bundlePolicy : "balanced"
+    });
+    window.perr = peer;
+    const setready = document.getElementById("setready");
+    let channel = peer.createDataChannel("data", {
+      ordered: false,
+      maxPacketLifeTime: 0,
+    });
+    channel.binaryType = "arraybuffer";
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    channel.onopen = function () {
+      console.log("data channel open");
+
+      // setInterval(() => {
+        // while (1){
+          // setTimeout(() => {
+            channel.send(crypto.getRandomValues(new Uint8Array(256)));
+            
+          // }, )
+        // }
+      // }, 1)
+    };
+    channel.onmessage = function (evt) {
+      channel.send(evt.data);
+    };
+
+    const webSocket = new WebSocket(`ws://${document.location.host}`);
+    webSocket.onopen = function () {
+      console.log("WebSocket opened");
+    };
+    webSocket.onmessage = function ({data}) {
+      const msg = JSON.parse(data);
+      if (msg.type) {
+        if (msg.type === "answer") {
+          const sdp = JSON.parse(msg.data.sdp);
+          peer.setRemoteDescription(new RTCSessionDescription(sdp.answer)).then(async function () {
+            const candidate = new RTCIceCandidate(sdp.candidate);
+            console.log(sdp.candidate)
+            peer.addIceCandidate(candidate).then(function () {
+              console.log("add ice candidate success");
+            })
+          })
+        }
+      }
+    };
+    setready.addEventListener("click", async function () {
+      const offer = await peer.createOffer().then(function (offer) {
+        peer.setLocalDescription(offer);
+
+        return offer.sdp;
+      })
+      if (webSocket.readyState === 1) {
+        document.getElementById("setready").remove();
+        //send offer
+        webSocket.send(JSON.stringify({
+          type: "offer",
+          data: offer
+        }));
+      }
+
+    })
+
+
+  </script>
+</body>
+
+</html>

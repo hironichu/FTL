@@ -1,0 +1,6 @@
+[submodule "deno/webrtc-unreliable"]
+	path = deno/webrtc-unreliable
+	url = https://github.com/hironichu/webrtc-unreliable
+[submodule "webrtc-unreliable"]
+	path = webrtc-unreliable
+	url = https://github.com/hironichu/webrtc-unreliable

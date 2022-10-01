@@ -1,0 +1,50 @@
+{
+  "fmt": {
+    "options": {
+      "lineWidth": 80,
+      "indentWidth": 2,
+      "useTabs": false
+    },
+    "files": {
+      "include": [
+        "deno/",
+        "test/",
+        "examples/"
+      ],
+      "exclude": [
+        "deno/web/"
+      ]
+    }
+  },
+  "lint": {
+    "files": {
+      "include": [
+        "deno/",
+        "test/",
+        "examples/"
+      ],
+      "exclude": [
+        "deno/web/",
+        "src",
+        "dist",
+        "target",
+        "NONE",
+        ".vscode"
+      ]
+    }
+  },
+  "tasks": {
+    "test": "deno test --allow-read --allow-ffi --unstable ./test/tests.ts",
+    "fmt": "deno fmt --check --unstable",
+    "lint": "deno lint --unstable",
+    "clean": "deno run --allow-write --allow-read ./utils/clean.ts",
+    "cargo-build": "cargo build --out-dir ./dist -Z unstable-options",
+    "cargo-release-arm": "cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/libftl.so ./dist/libftl_aarch64.so",
+    "cargo-build-arm": "cargo build --out-dir ./dist -Z unstable-options --locked  && mv ./dist/libftl.so ./dist/libftl_aarch64.so",
+    "debug-run": "deno run -A --unstable ./test/server.ts",
+    "build": "deno task cargo-build && deno task clean && deno task lint && deno task fmt && deno task test",
+    "build-release": "deno task cargo-build --release && deno task clean && deno task lint && deno task fmt && deno task test",
+    "docs": "deno doc -r --unstable ./deno/socket.ts",
+    "release": "gh pr create -w"
+  }
+}

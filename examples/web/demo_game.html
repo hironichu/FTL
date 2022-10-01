@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>WebRTC Data Channel Echo Server Example</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: "Helvetica", "Arial", sans-serif;
+      background-color: #fafafa;
+      margin: 0;
+      padding: 0;
+      /* Center everything in the page */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ADd dark mode detection with CSS3 media queries */
+    @media screen and (prefers-color-scheme: dark) {
+      body {
+        background-color: #303030;
+      }
+    }
+
+    .dev {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 50px;
+      flex-direction: row;
+      justify-content: space-evenly;
+      align-items: center;
+      border-end-end-radius: 4px;
+      padding: 0 10px;
+      background-color: rgb(0 0 0 / 20%);
+      z-index: 1000;
+    }
+
+    .dev>.fixedBtn {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      width: 85px;
+      border: none;
+      height: 25px;
+      cursor: pointer;
+      border-radius: 5%;
+      background-color: rgb(3 223 168);
+      transition: all 0.3s ease-in-out;
+    }
+
+    .fixedBtn:hover {
+      background-color: rgb(3 223 168 / 50%);
+      cursor: pointer;
+    }
+
+    #debugCanvas {
+      z-index: 1;
+      width: 720px;
+      height: 480px;
+      max-width: 720px;
+      max-height: 480px;
+      background-color: transparent;
+      display: flex;
+      position: relative;
+      margin: 9% auto;
+      transform: translate(0, 0);
+      transform-origin: center;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgb(0 0 0 / 50%);
+      border: 1px solid rgb(0 0 0 / 20%);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dev">
+    <input type="button" class="fixedBtn" value="Connect" id="connect">
+    <input type="button" class="fixedBtn" value="Disconnect" id="disconnect">
+  </div>
+  <canvas id="debugCanvas" height="480px" width="720px"></canvas>
+  <!-- <script type="module" src="./equal.js" async></script> -->
+  <script type="module">
+    import "./equal.js";
+    import Game from "./game.js";
+    const webSocket = new WebSocket(`ws://${document.location.host}`);
+    window.RtcClient = null
+    window.RTCstate = false;
+    window.RtcChannel = null;
+    window.GameApp = new Game();
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+    const connectBtn = document.getElementById("connect");
+    const disconnectBtn = document.getElementById("disconnect");
+    connectBtn.disabled = true;
+    disconnectBtn.disabled = true;
+    const disconnect = () => {
+      RtcChannel.close();
+      window.RTCstate = false;
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+      window.RtcClient.close();
+      window.RtcChannel = null;
+      window.RtcClient = null;
+      console.log("Disconnected WebRTC");
+    }
+    const connect = async () => {
+      if (RTCstate) return ;
+      if (webSocket.readyState === 1) {
+        window.RtcClient = new RTCPeerConnection();
+        RtcChannel = window.RtcClient.createDataChannel("data", {
+          ordered: false,
+          maxPacketLifeTime: 100,
+          protocol: "ftl-server"
+        });
+        RtcChannel.binaryType = "arraybuffer";
+        const offer = await window.RtcClient.createOffer().then(function (offer) {
+          window.RtcClient.setLocalDescription(offer);
+          return offer.sdp;
+        })
+        webSocket.send(JSON.stringify({
+          type: "offer",
+          data: offer
+        }));
+        RtcChannel.onerror = function (evt) {
+          console.error("RTCDataChannel error:", evt);
+          disconnect();
+        };
+
+        RtcChannel.onopen = function (e) {
+          console.log("Connected to WebRTC");
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          RTCstate = true;
+          RtcChannel.onmessage = GameApp.rtc.onmessage;
+          RtcChannel.onclose = GameApp.rtc.onclose;
+          GameApp.rtc.send = RtcChannel.send.bind(this);
+          GameApp.rtc.onopen(e);
+        };
+        RtcChannel.onclose = function () {
+          console.log("Disconnected from WebRTC");
+          disconnect();
+        };
+        RtcChannel.onclosing = function () {
+          console.log("Closing WebRTC");
+          disconnect();
+        }
+      }
+    }
+
+
+    webSocket.onopen = () => {
+      console.log("Connected to WebSocket");
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+    }
+    webSocket.onmessage = function ({ data }) {
+      const msg = JSON.parse(data);
+      if (msg.type) {
+        if (msg.type === "answer") {
+          const sdp = JSON.parse(msg.data.sdp);
+          if (!RTCstate && window.RtcClient) {
+            window.RtcClient.setRemoteDescription(new RTCSessionDescription(sdp.answer)).then(async function () {
+              const candidate = new RTCIceCandidate(sdp.candidate);
+              window.RtcClient.addIceCandidate(candidate)
+            })
+          }
+        }
+      }
+    };
+    connectBtn.addEventListener("click", async function () {
+      if (RTCstate) return;
+      await connect();
+    })
+    disconnectBtn.addEventListener("click", function () {
+      if (!RTCstate) return;
+      disconnect();
+    })
+
+  </script>
+</body>
+
+</html>

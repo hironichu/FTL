@@ -1,0 +1,24 @@
+{
+  "deno.enable": true,
+  "deno.config": "./deno.json",
+  "deno.enablePaths": [
+    "./deno",
+    "./test",
+    "./examples"
+  ],
+  "deno.unstable": true,
+  "deno.lint": true,
+  "deno.testing.enable": true,  
+  "editor.insertSpaces": true,
+  "deno.suggest.paths": false,
+  "deno.suggest.autoImports": false,
+  "editor.tabSize": 2,
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer", // Makes the magic
+    "editor.formatOnSave": true // Optional
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true
+  }
+}
