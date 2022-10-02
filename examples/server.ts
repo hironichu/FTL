@@ -5,7 +5,7 @@ import {RTCServer} from "../deno/mod.ts";
 const ftl = await RTCServer({
   host: "0.0.0.0",
   port: 9595,
-  public: "172.28.240.87",
+  public: "172.23.242.175",
   mode: "core"
 });
 
@@ -22,8 +22,8 @@ ftl.on("event", (data: any) => {
   console.info(data);
 });
 ftl.on("message",async (data: any) => {
-
-  console.log('Message ', new TextDecoder().decode(data[0]));
+  console.log('CLIENTS: '+ftl.clients_count());
+  // console.log('Message ', new TextDecoder().decode(data[0]));
 });
 ftl.on("close", () => {
   console.log('Server closed')

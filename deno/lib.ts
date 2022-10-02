@@ -71,6 +71,10 @@ const symbols = {
     result: "void",
     callback: true,
   },
+  clients_count: {
+    parameters: ["pointer"],
+    result: "u32",
+  },
 } as Record<string, Deno.ForeignFunction>;
 if (!local) {
   const remoteLIb = await fetch(download_lib, {

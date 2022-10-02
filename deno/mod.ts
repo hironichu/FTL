@@ -258,6 +258,15 @@ export class Socket extends EventEmitter<SocketEvents> {
       sdp: decode(data) as string,
     };
   }
+  public clients_count(): number | Error {
+    if (this.#PTR === 0n || !this.#LIB) {
+      return new Error("Socket Or Library not started");
+    }
+    // clients_count
+    const result = this.#LIB.symbols.clients_count(this.#PTR);
+    // console.log(result);
+    return result as number;
+  }
   #endpoint(
     endpoint: { port: number; addr: string; public: string },
   ): SocketEndpoint {
@@ -359,9 +368,3 @@ export const RTCServer = async (
   });
   return s;
 };
-const ftl = await RTCServer({
-  host: "0.0.0.0",
-  port: 9595,
-  public: "172.27.216.17",
-  mode: "core",
-});

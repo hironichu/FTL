@@ -1,3 +1,4 @@
+#![feature(vec_into_raw_parts)]
 #[warn(unused_imports)]
 #[warn(unused_variables)]
 pub mod executor;
@@ -23,64 +24,6 @@ static mut DEBUG: bool = false;
 pub struct SocketEndpoint {
   rtc_addr: String,
   rtc_endpoint: String,
-}
-
-/// A struct that contains a serialized JSON string of the SocketAddr struct
-///
-#[derive(Serialize, Deserialize)]
-pub struct JsonRtcAddr {
-  hostname: String,
-  port: u16,
-}
-///
-/// Struct representing a Vec of JsonRtcAddr structs
-///
-#[derive(Serialize, Deserialize)]
-pub struct ClientsListJson {
-  clients: Vec<JsonRtcAddr>,
-}
-
-///
-/// Struct representing a Packet
-/// @param len: The length of the packet
-/// @param buf: The buffer of the packet
-#[repr(C)]
-pub struct Packet {
-  len: u64,
-  buf: *const u8,
-}
-impl Packet {
-  pub fn new(len: u64, buf: *const u8) -> Packet {
-    Packet { len, buf }
-  }
-}
-///
-/// Struct representing a RtcAddr
-///
-#[derive(Serialize, Deserialize)]
-#[repr(C)]
-pub struct RtcAddr {
-  /// The hostname of the RTC endpoint
-  hostname: CString,
-  /// The port of the RTC endpoint
-  port: u16,
-}
-impl RtcAddr {
-  pub fn new(hostname: String, port: u16) -> RtcAddr {
-    RtcAddr {
-      hostname: CString::new(hostname).unwrap(),
-      port,
-    }
-  }
-}
-///
-/// The ClientList struct represents a list of clients that are connected to the server
-///
-#[derive(Serialize, Deserialize)]
-#[repr(C)]
-pub struct ClientsList {
-  /// A vec representing the clients
-  clients: Vec<JsonRtcAddr>,
 }
 
 ///
@@ -111,7 +54,6 @@ impl Socket {
   /// @param sender_fn: An External callback function to receive data from Deno
   pub fn new(
     addrs: ServerAddrs,
-    // receiver_fn: Option<extern "C" fn(Box<(Packet, RtcAddr)>)>,
     sender_fn: Option<
       extern "C" fn(Box<Result<SenderMessage, ErrorMessage>>, Box<Option<CString>>),
     >,
@@ -273,34 +215,25 @@ impl Socket {
       self.server.as_ref().unwrap().active_clients() as u32
     }
   }
-  pub fn rtc_connected_clients(&mut self) -> Result<ClientsList, ErrorMessage> {
-    if self.server.is_none() {
-      Err(ErrorMessage {
-        code: -2,
-        message: CString::new("Socket not started").unwrap(),
-      })
-    } else {
-      let list = self.server.as_mut().unwrap().connected_clients();
-      let mut clients = Vec::new();
-      for client in list {
-        clients.push(JsonRtcAddr {
-          hostname: client.ip().to_string(),
-          port: client.port(),
-        });
-      }
-      Ok(ClientsList { clients })
-    }
-  }
-  pub fn rtc_is_connected(&self, addr: &SocketAddr) -> Result<i64, u32> {
+  pub fn rtc_connected_clients(&mut self) -> Result<String, u32> {
     if self.server.is_none() {
       Err(2)
     } else {
-      let res = self.server.as_ref().unwrap().is_connected(addr);
-      if res {
-        Ok(1)
-      } else {
-        Ok(0)
-      }
+      let (ptr, len, _) = self
+        .server
+        .as_mut()
+        .unwrap()
+        .connected_clients()
+        .into_raw_parts();
+      let clients = unsafe { ::std::slice::from_raw_parts(ptr as *mut &str, len).join(",") };
+      Ok(clients)
+    }
+  }
+  pub fn rtc_is_connected(&self, addr: &SocketAddr) -> Result<bool, u32> {
+    if self.server.is_none() {
+      Err(2)
+    } else {
+      Ok(self.server.as_ref().unwrap().is_connected(addr))
     }
   }
   pub fn rtc_is_listening(&self) -> bool {
@@ -514,7 +447,7 @@ pub unsafe fn is_connected(
   len: usize,
   port: u16,
   state: *mut u32,
-) -> i64 {
+) -> bool {
   let server = &mut *srv;
   let addr = {
     let addrstr = ::std::slice::from_raw_parts(addr, len as usize);
@@ -526,27 +459,29 @@ pub unsafe fn is_connected(
     Ok(res) => res,
     Err(err) => {
       *state = err;
-      -1
+      false
     }
   }
 }
 #[no_mangle]
-pub extern "C" fn clients(srv_ptr: *mut Socket) -> u32 {
-  let server = unsafe { &mut *srv_ptr };
+pub unsafe extern "C" fn clients_count(srv: *mut Socket) -> u32 {
+  let server = &mut *srv;
   let result = server.rtc_connected_clients();
   match result {
-    Ok(result) => result.clients.len() as u32,
+    Ok(res) => res.len() as u32,
     Err(_) => 0,
   }
 }
+
 #[no_mangle]
-pub extern "C" fn list(srv_ptr: *mut Socket, clients: *mut u8) -> u32 {
-  let server = unsafe { &mut *srv_ptr };
+pub unsafe extern "C" fn clients(srv: *mut Socket, clients: *mut u8) -> u32 {
+  let server = &mut *srv;
   let result = server.rtc_connected_clients();
   match result {
-    Ok(result) => {
-      let amount = result.clients.len();
-      let mut newbuf = ::std::slice::from_raw_parts(clients, amount.len() * 20);
+    Ok(res) => {
+      let amount = res.len();
+      let newbuf = ::std::slice::from_raw_parts_mut(clients, amount);
+      newbuf.copy_from_slice(res.as_bytes());
       0
     }
     Err(_) => 0,
@@ -567,8 +502,8 @@ pub extern "C" fn list(srv_ptr: *mut Socket, clients: *mut u8) -> u32 {
 /// * The pointer must be valid
 ///
 #[no_mangle]
-pub unsafe extern "C" fn rtc_close(srv_ptr: *mut Socket) {
-  let server = &mut *srv_ptr;
+pub unsafe extern "C" fn rtc_close(srv: *mut Socket) {
+  let server = &mut *srv;
   server.rtc_close();
   drop(server);
 }

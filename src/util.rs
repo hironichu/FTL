@@ -1,7 +1,6 @@
-use crate::JsonRtcAddr;
-use serde_json::Error;
 use std::net::SocketAddr;
 use url::Url;
+
 pub fn parse_server_url(server_url_str: &str) -> Url {
   let url = Url::parse(server_url_str).expect("server_url_str is not a valid URL!");
   if let Some(path_segments) = url.path_segments() {
@@ -38,10 +37,4 @@ pub fn url_to_socket_addr(url: &Url) -> SocketAddr {
       panic!("URL -> SocketAddr parse fails with: {:?}", err);
     }
   }
-}
-
-pub fn resolve_addr(addr: *const u8, len: usize) -> Result<JsonRtcAddr, Error> {
-  let buf = unsafe { ::std::slice::from_raw_parts(addr, len) };
-  let addr: Result<JsonRtcAddr, Error> = serde_json::from_slice(buf);
-  addr
 }
