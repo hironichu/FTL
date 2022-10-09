@@ -1,7 +1,5 @@
-import { decode, validHostPort, validIp, validPort } from "../deno/utils.ts";
-import { serve } from "https://deno.land/std@0.158.0/http/server.ts";
+import { decode, encode, validHostPort, validIp, validPort } from "./utils.ts";
 import library from "./lib.ts";
-import { encode } from "./utils.ts";
 import { EventEmitter } from "./deps.ts";
 export type SocketEndpoint = {
   rtc_addr: string;
@@ -23,9 +21,9 @@ type SocketEvents = {
   // Message Event
   message: [Uint8Array, Deno.NetAddr];
   // Send result Event
-  event: [Uint8Array];
+  event: [MessageEvent];
   // Error Event
-  error: [ErrorEvent | Uint8Array];
+  error: [ErrorEvent | string];
   // Close Event
   close: [CloseEvent];
 };
@@ -48,39 +46,31 @@ export class Socket extends EventEmitter<SocketEvents> {
   #SocketEndpoint?: SocketEndpoint;
   #PTR = 0n;
   #STATE = new Uint32Array(1);
+  dec = decode;
+  enc = encode;
   readonly #sender = new Deno.UnsafeCallback(
     {
-      parameters: ["pointer", "pointer"],
+      parameters: ["u32", "pointer", "u32"],
       result: "void",
     },
-    (recvPtr, context) => {
-      // const { recvPtr, context } = args;
-      console.log("Called?");
-      // const res = SenderResult.resolve(
-      //   new Deno.UnsafePointerView(recvPtr as bigint),
-      // ) as Res<Uint8Array, Uint8Array>;
-      // const ctx = new Deno.UnsafePointerView(context as bigint);
-      // let context_name = null;
-      // if (OptionCTX.is_some(ctx)) {
-      //   context_name = OptionCTX.unwrap(ctx) as string;
-      // } else {
-      //   context_name = null;
-      // }
-      // this.#LIB.symbols.freeSender(recvPtr, context);
-      // if (res.status) {
-      //   const data = res.result as SenderResult;
-      //   this.emit("event", {
-      //     context: context_name ?? "none",
-      //     ...data,
-      //   });
-      // } else {
-      //   const error = res.result as ErrorMessage;
-      //   error.context = context_name ?? "none";
-      //   this.emit(
-      //     "error",
-      //     error,
-      //   );
-      // }
+    (code, buffer, buflen) => {
+      if (buflen < 0) {
+        return;
+      }
+      const pointer = new Deno.UnsafePointerView(buffer as bigint);
+      const result = this.dec(
+        new Uint8Array(
+          pointer.getArrayBuffer(buflen as number),
+        ),
+      );
+      if (code > 1) {
+        this.emit(
+          "error",
+          result,
+        );
+      } else {
+        this.emit("event", new MessageEvent(result, { data: code }));
+      }
     },
   );
   readonly #LIB: typeof library;
@@ -128,8 +118,8 @@ export class Socket extends EventEmitter<SocketEvents> {
       Promise.all([
         (async () => {
           const maxaddrlen = new Uint32Array(1);
-          let buffer = new Uint8Array(1600);
-          let addr = new Uint8Array(20);
+          const buffer = new Uint8Array(1600);
+          const addr = new Uint8Array(20);
           let nread = await this.#LIB.symbols.recv(
             this.#PTR,
             buffer,
@@ -144,8 +134,6 @@ export class Socket extends EventEmitter<SocketEvents> {
               port: address[1],
               transport: "udp",
             } as unknown as Deno.NetAddr);
-            buffer = new Uint8Array(1600);
-            addr = new Uint8Array(20);
             nread = await this.#LIB.symbols.recv(
               this.#PTR,
               buffer,
@@ -240,9 +228,7 @@ export class Socket extends EventEmitter<SocketEvents> {
    * @see {@link https://ftl.ekko.pw/#session @Socket.session()}
    */
   public session(offer: string) {
-    if (this.#PTR === 0n || !this.#LIB) {
-      return new Error("Socket Or Library not started");
-    }
+    if (this.#PTR === 0n) throw new Error("Socket not started");
     const sdp_buf = encode(offer);
     const resbuf = new Uint8Array(2048);
     const result = this.#LIB.symbols.session(
@@ -259,13 +245,27 @@ export class Socket extends EventEmitter<SocketEvents> {
     };
   }
   public clients_count(): number | Error {
-    if (this.#PTR === 0n || !this.#LIB) {
-      return new Error("Socket Or Library not started");
-    }
+    if (this.#PTR === 0n) throw new Error("Socket not started");
     // clients_count
     const result = this.#LIB.symbols.clients_count(this.#PTR);
     // console.log(result);
     return result as number;
+  }
+  public clients() {
+    if (this.#PTR === 0n) throw new Error("Socket not started");
+    const buffer = new Uint8Array(1024);
+    const nread = this.#LIB.symbols.clients(this.#PTR, buffer);
+    const result = buffer.subarray(0, nread as number);
+    const data = decode(result).split(",");
+    data.pop();
+    return data.reduce((acc, v) => {
+      const addr = v.split(":");
+      return acc.add({
+        hostname: addr[0],
+        port: +addr[1],
+        transport: "udp",
+      });
+    }, new Set<Deno.NetAddr>());
   }
   #endpoint(
     endpoint: { port: number; addr: string; public: string },

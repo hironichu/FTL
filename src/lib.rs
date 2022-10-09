@@ -12,11 +12,11 @@ use std::ffi::CString;
 use std::net::SocketAddr;
 use urls::ServerAddrs;
 use util::{parse_server_url, url_to_socket_addr};
-use webrtc_unreliable::{ErrorMessage, MessageType, SenderMessage, Server};
-static mut SEND_FN: Option<
-  extern "C" fn(Box<Result<SenderMessage, ErrorMessage>>, Box<Option<CString>>),
-> = None;
+use webrtc_unreliable::{ErrorMessage, MessageType, Server};
+static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
 static mut DEBUG: bool = false;
+
+// @TODO(hironichu) Add Error code numbers into Deno to add more error context.
 
 /// A struct that holds the necessary information to set up a WebRTC Server
 /// and start listening for incoming connections.
@@ -54,9 +54,7 @@ impl Socket {
   /// @param sender_fn: An External callback function to receive data from Deno
   pub fn new(
     addrs: ServerAddrs,
-    sender_fn: Option<
-      extern "C" fn(Box<Result<SenderMessage, ErrorMessage>>, Box<Option<CString>>),
-    >,
+    sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
   ) -> Result<Self, u32> {
     unsafe {
       SEND_FN = sender_fn;
@@ -173,18 +171,7 @@ impl Socket {
                 self.message_type.unwrap()
               };
               match rtc_server.send(&payload, msgtype, &address).await {
-                Err(_) => unsafe {
-                  if SEND_FN.is_some() {
-                    SEND_FN.unwrap()(
-                      Box::new(Err(ErrorMessage {
-                        code: 400,
-                        message: CString::new(format!("{}:{}", address.ip(), address.port()))
-                          .unwrap(),
-                      })),
-                      Box::new(Some(CString::new("socket_send_error").unwrap())),
-                    );
-                  }
-                },
+                Err(_) => unsafe { if SEND_FN.is_some() {} },
                 Ok(_) => drop(payload),
               }
             }
@@ -202,7 +189,6 @@ impl Socket {
       match res {
         Ok(_) => Ok(true),
         Err(_) => {
-          // let error_message = format!("{}", error);
           Err(5) // 5 error while disconnect
         }
       }
@@ -219,13 +205,7 @@ impl Socket {
     if self.server.is_none() {
       Err(2)
     } else {
-      let (ptr, len, _) = self
-        .server
-        .as_mut()
-        .unwrap()
-        .connected_clients()
-        .into_raw_parts();
-      let clients = unsafe { ::std::slice::from_raw_parts(ptr as *mut &str, len).join(",") };
+      let clients = self.server.as_mut().unwrap().connected_clients();
       Ok(clients)
     }
   }
@@ -272,7 +252,7 @@ impl Socket {
 pub unsafe extern "C" fn start(
   endpoint_buf: *const u8,
   len: u32,
-  send_func: Option<extern "C" fn(Box<Result<SenderMessage, ErrorMessage>>, Box<Option<CString>>)>,
+  send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
   debug: u32,
   res: *mut u32,
 ) -> *mut Socket {
@@ -331,10 +311,9 @@ pub unsafe extern "C" fn recv(
   match server.from_client_receiver.as_ref().unwrap().recv() {
     Ok((addr, message, _)) => {
       let addrslice = addr.to_string();
-      let buff = ::std::slice::from_raw_parts_mut(buff, message.len());
-      let addr = ::std::slice::from_raw_parts_mut(addrbuff, addrslice.len());
-      buff.copy_from_slice(&message);
-      addr.copy_from_slice(addrslice.as_bytes());
+      ::std::slice::from_raw_parts_mut(buff, message.len()).copy_from_slice(&message);
+      ::std::slice::from_raw_parts_mut(addrbuff, addrslice.len())
+        .copy_from_slice(addrslice.as_bytes());
       *addrlength = addrslice.len() as u32;
       message.len() as u32
     }
@@ -373,15 +352,15 @@ pub unsafe extern "C" fn send(
     Ok(_) => {
       *state = 0;
     }
-    Err(err) => {
+    Err(_) => {
       *state = 13; //Cannot send message
-      SEND_FN.unwrap()(
-        Box::new(Err(ErrorMessage {
-          code: -1,
-          message: CString::new(err.to_string()).unwrap(),
-        })),
-        Box::new(Some(CString::new("message_send_error").unwrap())),
-      )
+                   // SEND_FN.unwrap()(
+                   //   Box::new(Err(ErrorMessage {
+                   //     code: -1,
+                   //     message: CString::new(err.to_string()).unwrap(),
+                   //   })),
+                   //   Box::new(Some(CString::new("message_send_error").unwrap())),
+                   // )
     }
   }
 }
@@ -468,7 +447,7 @@ pub unsafe extern "C" fn clients_count(srv: *mut Socket) -> u32 {
   let server = &mut *srv;
   let result = server.rtc_connected_clients();
   match result {
-    Ok(res) => res.len() as u32,
+    Ok(res) => res.split(',').count() as u32,
     Err(_) => 0,
   }
 }
@@ -478,11 +457,10 @@ pub unsafe extern "C" fn clients(srv: *mut Socket, clients: *mut u8) -> u32 {
   let server = &mut *srv;
   let result = server.rtc_connected_clients();
   match result {
-    Ok(res) => {
-      let amount = res.len();
-      let newbuf = ::std::slice::from_raw_parts_mut(clients, amount);
-      newbuf.copy_from_slice(res.as_bytes());
-      0
+    Ok(addrs) => {
+      let clients = ::std::slice::from_raw_parts_mut(clients, addrs.len());
+      clients.copy_from_slice(addrs.as_bytes());
+      addrs.len() as u32
     }
     Err(_) => 0,
   }
