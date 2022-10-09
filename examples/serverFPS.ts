@@ -16,12 +16,18 @@ Deno.addSignalListener("SIGINT", () => {
   Deno.exit(0);
 });
 
-if (!Arguments.ip) throw new Error("Please provide an IP address");
+// if (!Arguments.ip) {
+//   try {
+//     Arguments.ip = Deno.networkInterfaces().find(iface => iface.name === "eth0")?.address
+//   } catch {
+//     throw new Error("Please provide an IP address");
+//   }
+// } 
 
 const ftl = await RTCServer({
   host: "0.0.0.0",
   port: 9595,
-  public: Arguments.ip,
+  public: Deno.networkInterfaces().find(iface => iface.name === "eth0")?.address,
 } as any, true);
 const Engine = {} as any;
 Engine.lastTime = 0;
@@ -41,40 +47,41 @@ const playerStates = new Map<string, {
   time: number,
 }>();
 ftl.on("event", (evt) => {
-  if (evt.status === 1) {
-    const id = getIDFromSTRAddr(evt.message!); 
-    if (evt.context === "client_datachannel_open") {
+  // if (evt.data.code === 1) {
+    const id = getIDFromSTRAddr(evt.data.info!); 
+    if (evt.type === "client_datachannel_open") {
       console.log("Player connected", id);
+      console.log(evt.data.info)
       const playerSock = {
-        hostname: evt.message?.split(":")[0]!,
-        port: Number(evt.message?.split(":")[1]),
-      }
+        hostname: evt.data.info?.split(":")[0]!,
+        port: Number(evt.data.info?.split(":")[1]),
+      } as Deno.NetAddr;
       players.set(id, playerSock);
-    } else if (evt.context === "client_datachannel_close") {
+    } else if (evt.type === "client_datachannel_close") {
       console.log("Player disconnected", id);
       players.delete(id);
       playerStates.delete(id);
       broadcast(JSON.stringify({type: "remove_player", id}), MessageType.Text);
-    } else if (evt.context === "client_datachannel_timeout") {
+    } else if (evt.type === "client_datachannel_timeout") {
       console.log("Player timeout", id);
       players.delete(id);
       playerStates.delete(id);
       broadcast(JSON.stringify({type: "remove_player", id}), MessageType.Text);
     }
-  }
+  // }
 });
 ftl.on("error", (err) => {
   const error = err as any;
-  if (error.context === "socket_send_error" ) {
-    const id = getIDFromSTRAddr(error.message); 
-    players.delete(id);
-    playerStates.delete(id);
-    //broadcast the event
-    broadcast(JSON.stringify({data: "remove_player", id}), MessageType.Text);
-  } else if (error.context === "message_send_error") {
-    const id = getIDFromSTRAddr(error.message); 
-    console.log("Sending Error: Queue full");
-  }
+  // if (error.context === "socket_send_error" ) {
+  //   const id = getIDFromSTRAddr(error.message); 
+  //   players.delete(id);
+  //   playerStates.delete(id);
+  //   //broadcast the event
+  //   broadcast(JSON.stringify({data: "remove_player", id}), MessageType.Text);
+  // } else if (error.context === "message_send_error") {
+  //   const id = getIDFromSTRAddr(error.message); 
+  //   console.log("Sending Error: Queue full");
+  // }
 })
 const broadcast = (data: Uint8Array | string, type?: MessageType, exclude?: string[]) => {
   if (players.size === 0) return;

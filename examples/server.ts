@@ -18,14 +18,14 @@ let totalsize_recv = 0;
 let total_sent_bytes = 0;
 let sent = 0;
 
-ftl.on("event", (data: any) => {
-  // console.info(data);
+ftl.on("event", (data: MessageEvent) => {
+  console.info(data);
 });
 ftl.on("message",async (data, addr) => {
   // console.log('CLIENTS Count: '+ftl.clients_count());
   console.log('CLIENTS List: ', [...ftl.clients()]);
   // console.log('Message ', new TextDecoder().decode(data));
-  ftl.send(data, addr);
+  // ftl.send(data, addr);
 });
 ftl.on("close", () => {
   console.log('Server closed')

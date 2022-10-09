@@ -1,5 +1,6 @@
 import { decode, encode, validHostPort, validIp, validPort } from "./utils.ts";
 import library from "./lib.ts";
+import { CODE_STATE, STATE } from "./dict.ts";
 import { EventEmitter } from "./deps.ts";
 export type SocketEndpoint = {
   rtc_addr: string;
@@ -53,7 +54,8 @@ export class Socket extends EventEmitter<SocketEvents> {
       parameters: ["u32", "pointer", "u32"],
       result: "void",
     },
-    (code, buffer, buflen) => {
+    (_code: unknown | number, buffer, buflen) => {
+      const code = _code as STATE;
       if (buflen < 0) {
         return;
       }
@@ -63,13 +65,16 @@ export class Socket extends EventEmitter<SocketEvents> {
           pointer.getArrayBuffer(buflen as number),
         ),
       );
-      if (code > 1) {
+      if (code < 100) {
         this.emit(
           "error",
           result,
         );
       } else {
-        this.emit("event", new MessageEvent(result, { data: code }));
+        this.emit(
+          "event",
+          new MessageEvent(CODE_STATE[code], { data: { info: result, code } }),
+        );
       }
     },
   );
