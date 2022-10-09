@@ -8,6 +8,7 @@ on:
       - 'main'
       - 'releases/**'
       - 'testing_**'
+      - 'feat_**'
 concurrency:
   group: ${{ github.workflow }}-${{ !contains(github.event.pull_request.labels.*.name, 'test-flaky-ci') && github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -18,7 +19,7 @@ jobs:
     name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
     if: |
       github.event_name == 'push' ||
-      !startsWith(github.event.pull_request.head.label, 'deno-rest:')
+      !startsWith(github.event.pull_request.head.label, 'hironichu:')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -73,7 +74,7 @@ jobs:
           startsWith(matrix.os, 'ubuntu') &&
           matrix.profile == 'release' &&
           matrix.job == 'test' &&
-          github.repository == 'deno-rest/ftl' &&
+          github.repository == 'hironichu/FTL' &&
           startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p target/release
@@ -199,7 +200,7 @@ jobs:
         if: |
           (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
-          (github.repository == 'deno-rest/ftl' &&
+          (github.repository == 'hironichu/FTL' &&
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
         run: deno task cargo-build --release
@@ -207,7 +208,7 @@ jobs:
         if: |
           (startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
-          (github.repository == 'deno-rest/ftl' &&
+          (github.repository == 'hironichu/FTL' &&
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
         run: |
@@ -236,7 +237,7 @@ jobs:
         if: |
           (matrix.job == 'test' && matrix.profile == 'release') &&
           (matrix.use_sysroot || (
-          github.repository == 'deno-rest/ftl' &&
+          github.repository == 'hironichu/FTL' &&
           github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
         run: |
           deno task test
@@ -244,7 +245,7 @@ jobs:
         uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
         if: |
           (matrix.job == 'test' && matrix.profile == 'release') &&
-          github.repository == 'deno-rest/ftl' &&
+          github.repository == 'hironichu/FTL' &&
           github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
