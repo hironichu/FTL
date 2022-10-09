@@ -12,7 +12,7 @@
         "examples/"
       ],
       "exclude": [
-        "deno/web/"
+        "examples/web/"
       ]
     }
   },
@@ -24,7 +24,7 @@
         "examples/"
       ],
       "exclude": [
-        "deno/web/",
+        "examples/web/",
         "src",
         "dist",
         "target",

@@ -47,10 +47,10 @@ jobs:
           - os: 'ubuntu-20.04'
             job: lint
             profile: debug
-          - os: 'self-hosted'
+          - os: 'frostbite'
             job: test
             profile: debug
-          - os: 'self-hosted'
+          - os: 'frostbite'
             job: test
             profile: release
       fail-fast: ${{ github.event_name == 'pull_request' ||
@@ -84,12 +84,12 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly   
         if: matrix.job == 'test'
       - name: Install Deno from .land
-        if: matrix.os != 'self-hosted'
+        if: matrix.os != 'frostbite'
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
       - name: Install Deno from source
-        if: matrix.os == 'self-hosted'
+        if: matrix.os == 'frostbite'
         run: |
           echo "Check if Deno is already installed"
           if ! type deno > /dev/null; then
@@ -177,7 +177,7 @@ jobs:
         run: deno task cargo-build --locked --all-targets
       - name: Build debug unix arch64
         if: |
-          (startsWith(matrix.os, 'self-hosted')) &&
+          (startsWith(matrix.os, 'frostbite')) &&
           (matrix.job == 'test' && matrix.profile == 'debug') 
         run: |
           deno task cargo-build-arm
@@ -206,7 +206,7 @@ jobs:
         run: deno task cargo-build --release
       - name: Build release Unix Aarch64
         if: |
-          (startsWith(matrix.os, 'self-hosted')) &&
+          (startsWith(matrix.os, 'frostbite')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
           (github.repository == 'hironichu/FTL' &&
           (github.ref == 'refs/heads/main' ||
