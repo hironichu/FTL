@@ -1,13 +1,7 @@
-import "https://deno.land/std@0.158.0/dotenv/load.ts";
-
-if (!Deno.env.get("DENO_AUTH_TOKENS")) {
-  throw new Error("Please set DENO_AUTH_TOKENS to your auth tokens");
-}
 const data = await fetch(
   "https://api.github.com/repos/hironichu/FTL/releases",
   {
     headers: {
-      Authorization: `token ${Deno.env.get("DENO_AUTH_TOKENS")!.split("@")[0]}`,
       Accept: "application/vnd.github.v3+json",
     },
   },
@@ -32,5 +26,4 @@ switch (Deno.build.os) {
     GitDLUrL = new URL(json[0].assets.filter((item: { name: string}) => item.name.endsWith(".dylib"))[0].url);
     break;
 }
-GitDLUrL.username = Deno.env.get("DENO_AUTH_TOKENS")!.split("@")[0]!;
 export default GitDLUrL;

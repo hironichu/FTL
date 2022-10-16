@@ -22,8 +22,6 @@ ftl.on("event", (data: any) => {
   // console.info(data);
 });
 ftl.on("message",async (data: Uint8Array, addr) => {
-  // console.log('CLIENTS: '+ftl.clients_count());
-  // console.log('Message ', new TextDecoder().decode(data[0]));
   ftl.send(data, addr);
   console.log(i++);
 });
