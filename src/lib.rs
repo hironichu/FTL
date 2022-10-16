@@ -298,7 +298,7 @@ pub unsafe extern "C" fn start(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn recv(
+pub unsafe extern "C" fn rtc_recv(
   srv: *mut Socket,
   buff: *mut u8,
   addrbuff: *mut u8,
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn recv(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn send(
+pub unsafe extern "C" fn rtc_send(
   srv: *mut Socket,
   msgbuff: *const u8,
   msglen: u32,

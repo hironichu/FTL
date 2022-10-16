@@ -125,7 +125,7 @@ export class Socket extends EventEmitter<SocketEvents> {
           const maxaddrlen = new Uint32Array(1);
           const buffer = new Uint8Array(1600);
           const addr = new Uint8Array(20);
-          let nread = await this.#LIB.symbols.recv(
+          let nread = await this.#LIB.symbols.rtc_recv(
             this.#PTR,
             buffer,
             addr,
@@ -139,7 +139,7 @@ export class Socket extends EventEmitter<SocketEvents> {
               port: address[1],
               transport: "udp",
             } as unknown as Deno.NetAddr);
-            nread = await this.#LIB.symbols.recv(
+            nread = await this.#LIB.symbols.rtc_recv(
               this.#PTR,
               buffer,
               addr,
@@ -178,7 +178,7 @@ export class Socket extends EventEmitter<SocketEvents> {
       type = MessageType.Text;
     }
     try {
-      this.#LIB!.symbols.send(
+      this.#LIB!.symbols.rtc_send(
         this.#PTR,
         buf,
         buf.byteLength,

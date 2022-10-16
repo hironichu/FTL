@@ -48,7 +48,7 @@ const symbols = {
     result: "pointer",
     callback: true,
   },
-  recv: {
+  rtc_recv: {
     parameters: ["pointer", "buffer", "buffer", "buffer"],
     nonblocking: true,
     result: "u32",
@@ -57,7 +57,7 @@ const symbols = {
     parameters: ["pointer", "buffer", "u32", "buffer", "buffer"],
     result: "u32",
   },
-  send: {
+  rtc_send: {
     parameters: [
       "pointer",
       "buffer",
