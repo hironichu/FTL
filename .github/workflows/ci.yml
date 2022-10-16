@@ -47,12 +47,7 @@ jobs:
           - os: 'ubuntu-20.04'
             job: lint
             profile: debug
-          # - os: 'self-hosted'
-          #   job: test
-          #   profile: debug
-          # - os: 'self-hosted'
-          #   job: test
-            profile: release
+
       fail-fast: ${{ github.event_name == 'pull_request' ||
         (github.ref != 'refs/heads/main' &&
         !startsWith(github.ref, 'refs/tags/')) }}
@@ -84,7 +79,6 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly   
         if: matrix.job == 'test'
       - name: Install Deno from .land
-        if: matrix.os != 'self-hosted'
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
@@ -204,15 +198,6 @@ jobs:
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
         run: deno task cargo-build --release
-      # - name: Build release Unix Aarch64
-      #   if: |
-      #     (startsWith(matrix.os, 'self-hosted')) &&
-      #     (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
-      #     (github.repository == 'hironichu/FTL' &&
-      #     (github.ref == 'refs/heads/main' ||
-      #     startsWith(github.ref, 'refs/tags/'))))
-      #   run: |
-      #     deno task cargo-release-arm
       - name: Build release Windows
         if: |
           runner.os == 'Windows' &&
