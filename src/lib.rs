@@ -354,13 +354,6 @@ pub unsafe extern "C" fn rtc_send(
     }
     Err(_) => {
       *state = 13; //Cannot send message
-                   // SEND_FN.unwrap()(
-                   //   Box::new(Err(ErrorMessage {
-                   //     code: -1,
-                   //     message: CString::new(err.to_string()).unwrap(),
-                   //   })),
-                   //   Box::new(Some(CString::new("message_send_error").unwrap())),
-                   // )
     }
   }
 }

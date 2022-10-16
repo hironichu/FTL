@@ -79,6 +79,10 @@ const symbols = {
     parameters: ["pointer", "buffer"],
     result: "u32",
   },
+  rtc_close: {
+    parameters: ["pointer"],
+    result: "void",
+  },
 } as Record<string, Deno.ForeignFunction>;
 if (!local) {
   const remoteLIb = await fetch(download_lib, {

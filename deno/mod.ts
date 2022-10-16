@@ -272,6 +272,11 @@ export class Socket extends EventEmitter<SocketEvents> {
       });
     }, new Set<Deno.NetAddr>());
   }
+  public close() {
+    if (this.#PTR === 0n) throw new Error("Socket not started");
+    this.#sender.close();
+    this.#LIB.symbols.rtc_close(this.#PTR);
+  }
   #endpoint(
     endpoint: { port: number; addr: string; public: string },
   ): SocketEndpoint {

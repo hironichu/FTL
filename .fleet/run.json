@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "type": "command",
+            "name": "run",
+            "program": "C:/Users/hiron/.deno/bin/deno.exe",
+            "args": ["task", "cargo-build"],
+        },
+
+    ]
+}

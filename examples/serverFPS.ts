@@ -12,7 +12,8 @@ let tick = 0
 let previous = performance.now()
 const tickLengthMs = 1000 / FPS;
 Deno.addSignalListener("SIGINT", () => {
-  console.log("SIGINT");
+  console.log("Closing server..");
+  ftl.close();
   Deno.exit(0);
 });
 
@@ -27,7 +28,7 @@ Deno.addSignalListener("SIGINT", () => {
 const ftl = await RTCServer({
   host: "0.0.0.0",
   port: 9595,
-  public: Deno.networkInterfaces().find(iface => iface.name === "eth0")?.address,
+  public: Deno.networkInterfaces().find(iface => (iface.name === "eth0" || iface.name === "Ethernet" || iface.name === "en0") && iface.family === "IPv4")?.address,
 } as any, true);
 const Engine = {} as any;
 Engine.lastTime = 0;
