@@ -1,10 +1,9 @@
 import {
   assert,
-  // assertEquals,
-  // assertIsError,
+  assertEquals,
   fail,
 } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-// import { Socket } from "../deno/socket.ts";
+import { Socket } from "../deno/mod.ts";
 import { validHostPort, validIp } from "../deno/utils.ts";
 
 Deno.test("Lib path (windows)", {
@@ -48,88 +47,79 @@ Deno.test("IP check", {}, (): void => {
   assert(!validIp(addr), "validHostPort");
 });
 
-Deno.test("Socket", {
-  sanitizeOps: false,
+await Deno.test("Socket", {
   sanitizeResources: false,
-  sanitizeExit: false,
-  ignore: true,
-}, (_t): void => {
+  sanitizeOps: false,
+}, async (t): Promise<void> => {
   // const sock = new Socket();
+  let sock: Socket;
+
   // await sock.close();
-  // await t.step({
-  //   name: "New Socket",
-  //   fn: () => {
-  //     const sock = new Socket();
-  //     sock.listen({
-  //       addr: "0.0.0.0",
-  //       port: 1234,
-  //       public: "192.168.1.69",
-  //     });
-  //     assertEquals(sock instanceof Socket, true, "instanceof Socket");
-  //   },
-  // });
-  // await t.step({
-  //   name: "Listen",
-  //   fn: async () => {
-  //     await sock.listen({
-  //       addr: "0.0.0.0",
-  //       port: 9565,
-  //       public: "192.168.1.69",
-  //     });
-  //     assertEquals(sock.ptr === 0n, false, "Pointer not set");
-  //   },
-  //   sanitizeResources: false,
-  //   sanitizeOps: false,
-  //   sanitizeExit: false,
-  // });
-  // await t.step({
-  //   name: "Valid Session Description",
-  //   fn: async () => {
-  //     const validSDP = `v=0
-  //     o=- 4904239798171709660 2 IN IP4 127.0.0.1
-  //     s=-
-  //     t=0 0
-  //     a=group:BUNDLE 0
-  //     a=extmap-allow-mixed
-  //     a=msid-semantic: WMS
-  //     m=application 9 UDP/DTLS/SCTP webrtc-datachannel
-  //     c=IN IP4 0.0.0.0
-  //     a=ice-ufrag:RmQU
-  //     a=ice-pwd:W7brWjRyj27Zl+VuWP1EAUiw
-  //     a=ice-options:trickle
-  //     a=fingerprint:sha-256 45:DF:14:5D:AC:25:96:B1:57:49:6A:DE:C7:FA:EE:0B:73:29:A4:BC:71:3E:F2:E4:76:28:19:9D:25:4E:5D:9C
-  //     a=setup:actpass
-  //     a=mid:0
-  //     a=sctp-port:5000
-  //     a=max-message-size:262144`;
-  //     const res = await sock.session(validSDP);
-  //     assertEquals(
-  //       res instanceof Error,
-  //       true,
-  //       "The result is an Error and it shouldn't.",
-  //     );
-  //   },
-  // });
-  // await t.step({
-  //   name: "Invalid Session Description",
-  //   fn: async () => {
-  //     const invalidSDP = `Invalid session string.`;
-  //     const res = await sock.session(invalidSDP);
-  //     assertIsError(
-  //       res,
-  //       Error,
-  //       "error streaming the incoming SDP descriptor: not all SDP fields provided",
-  //     );
-  //   },
-  // });
-  // sock!.close(1);
-  // t.step({
-  //   name: "Closing socket",
-  //   fn: () => {
-  //     assertEquals(sock!.ptr === 0n, true, "The PTR is not 0n");
-  //   },
-  // });
-  // assert(true);
+  const _defaultIP = Deno.networkInterfaces().find((iface) =>
+    (iface.name === "eth0" || iface.name === "Ethernet" ||
+      iface.name === "en0") && iface.family === "IPv4"
+  )?.address;
+  await t.step({
+    name: "New Socket",
+    fn: () => {
+      sock = new Socket();
+      assertEquals(sock instanceof Socket, true, "instanceof Socket");
+    },
+    sanitizeResources: false,
+    sanitizeOps: false,
+    sanitizeExit: false,
+  });
+  //   await t.step({
+  //     name: "Listen",
+  //     fn: async () => {
+  //       await sock.listen({
+  //         addr: "0.0.0.0",
+  //         port: 1234,
+  //         public: defaultIP || "127.0.0.1",
+  //       });
+  //       assertEquals(sock.ptr === 0n, false, "Pointer not set");
+  //     },
+  //     sanitizeResources: false,
+  //     sanitizeOps: false,
+  //     sanitizeExit: false,
+  //   });
+  //   await t.step({
+  //     name: "Valid Session Description",
+  //     fn: async () => {
+  //       const validSDP = `v=0
+  // o=- 2294297329490440913 2 IN IP4 127.0.0.1
+  // s=-
+  // t=0 0
+  // a=group:BUNDLE 0
+  // a=extmap-allow-mixed
+  // a=msid-semantic: WMS
+  // m=application 9 UDP/DTLS/SCTP webrtc-datachannel
+  // c=IN IP4 0.0.0.0
+  // a=ice-ufrag:LDqn
+  // a=ice-pwd:zTOQ1htU7TNtQsbFODCVu/AQ
+  // a=ice-options:trickle
+  // a=fingerprint:sha-256 3C:64:C7:E9:54:F4:85:C5:27:C2:A1:C2:5C:4E:20:65:1F:BD:93:3B:ED:02:EF:BF:20:AA:55:9D:CC:45:5A:2E
+  // a=setup:actpass
+  // a=mid:0
+  // a=sctp-port:5000
+  // a=max-message-size:262144
+  // `;
+  //       const res = await sock.session(validSDP);
+  //       assertEquals(sock.state, 0, "State is 0");
+  //       assertEquals(
+  //         res instanceof Error,
+  //         false,
+  //         "The result is an Error and it shouldn't.",
+  //       );
+  //     },
+  //   });
+  //   await t.step({
+  //     name: "Closing socket",
+  //     fn: async () => {
+  //       await sock!.close();
+  //       assertEquals(sock.ptr === 0n, true, "The PTR is not 0n");
+  //     },
+  //   });
 });
 
 //TODO(@hironichu)

@@ -209,6 +209,7 @@ serve((req) => {
       const msg = JSON.parse(data);
       if (msg.type) {
         if (msg.type === "offer") {
+          console.log(msg.data)
           const res = ftl.session(msg.data);
           if (res instanceof Error) {
             console.log(res);

@@ -81,6 +81,7 @@ const symbols = {
   },
   rtc_close: {
     parameters: ["pointer"],
+    nonblocking: true,
     result: "void",
   },
 } as Record<string, Deno.ForeignFunction>;

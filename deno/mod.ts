@@ -49,6 +49,15 @@ export class Socket extends EventEmitter<SocketEvents> {
   #STATE = new Uint32Array(1);
   dec = decode;
   enc = encode;
+  public get state(): number {
+    return this.#STATE[0];
+  }
+  public get ptr(): bigint {
+    return this.#PTR;
+  }
+  public get sender() {
+    return this.#sender;
+  }
   readonly #sender = new Deno.UnsafeCallback(
     {
       parameters: ["u32", "pointer", "u32"],
@@ -132,8 +141,8 @@ export class Socket extends EventEmitter<SocketEvents> {
             maxaddrlen,
           );
           while (nread > 0) {
+            if (this.ptr === 0n) return;
             const address = decode(addr.subarray(0, maxaddrlen[0])).split(":");
-
             this.emit("message", buffer.subarray(0, nread as number), {
               hostname: address[0],
               port: address[1],
@@ -146,6 +155,7 @@ export class Socket extends EventEmitter<SocketEvents> {
               maxaddrlen,
             );
           }
+          return;
         })(),
       ]);
     }
@@ -232,7 +242,7 @@ export class Socket extends EventEmitter<SocketEvents> {
    * ```
    * @see {@link https://ftl.ekko.pw/#session @Socket.session()}
    */
-  public session(offer: string) {
+  public session(offer: string): { type: "answer"; sdp: string } | Error {
     if (this.#PTR === 0n) throw new Error("Socket not started");
     const sdp_buf = encode(offer);
     const resbuf = new Uint8Array(2048);
@@ -243,6 +253,12 @@ export class Socket extends EventEmitter<SocketEvents> {
       resbuf,
       this.#STATE,
     );
+    if (result === 0) {
+      // if (this.state === 12) {
+      //   return new Error("Session descriptor invalid");
+      // }
+      // return new Error("Unknown Session description error");
+    }
     const data = resbuf.subarray(0, result as number);
     return {
       type: "answer",
@@ -272,10 +288,13 @@ export class Socket extends EventEmitter<SocketEvents> {
       });
     }, new Set<Deno.NetAddr>());
   }
-  public close() {
+  public async close() {
     if (this.#PTR === 0n) throw new Error("Socket not started");
+    await this.#LIB.symbols.rtc_close(this.#PTR);
+    this.#PTR = 0n;
     this.#sender.close();
-    this.#LIB.symbols.rtc_close(this.#PTR);
+    this.emit("close", new CloseEvent("close"));
+    return true;
   }
   #endpoint(
     endpoint: { port: number; addr: string; public: string },
