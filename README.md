@@ -15,7 +15,29 @@ As of today there hasn't been any working WebRTC library for Deno, this is a fir
 ---
 ## <center>Usage: </center>
 
-(WIP...)
+```ts
+import { RTCServer } from "https://deno.land/x/ftl/mod.ts"
+
+const ip = Deno.networkInterfaces().find(iface => (iface.name === "eth0" || iface.name === "Ethernet" || iface.name === "en0") && iface.family === "IPv4")?.address;
+
+//Starting the server
+const ftl = await RTCServer({
+  host: "0.0.0.0",
+  port: 9595,
+  public: ip ?? "127.0.0.1",
+} as any, true);
+
+
+// Listening for the different event
+ftl.on("event", (evt) => {});
+ftl.on("message", (data, addr) => {});
+ftl.on("error", (closeEvent) => {});
+//
+
+// Send exemple
+// Please use an existing client addr, the object is a Deno.NetAddr.
+ftl.send("hello world", { hostname: "0.0.0.0", port: 12345, transport: "udp"}) //
+```
 
 ---
 Quick FAQ (Frequently Asked Questions):

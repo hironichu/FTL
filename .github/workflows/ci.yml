@@ -9,6 +9,7 @@ on:
       - 'releases/**'
       - 'testing_**'
       - 'feat_**'
+      - 'fix_**'
 concurrency:
   group: ${{ github.workflow }}-${{ !contains(github.event.pull_request.labels.*.name, 'test-flaky-ci') && github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -37,20 +38,23 @@ jobs:
           - os: windows-latest
             job: test
             profile: release
-          - os: 'ubuntu-20.04'
+          - os: 'ubuntu-22.04'
             job: test
             profile: release
             use_sysroot: true
-          - os: 'ubuntu-20.04'
+          - os: 'ubuntu-22.04'
             job: test
             profile: debug
-          - os: 'ubuntu-20.04'
+          - os: 'ubuntu-22.04'
             job: lint
             profile: debug
-
-      fail-fast: ${{ github.event_name == 'pull_request' ||
-        (github.ref != 'refs/heads/main' &&
-        !startsWith(github.ref, 'refs/tags/')) }}
+          - os: 'self-hosted'
+            job: test
+            profile: debug
+          - os: 'self-hosted'
+            job: test
+            profile: release
+      fail-fast: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) }}
     env:
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: full
@@ -79,19 +83,20 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly   
         if: matrix.job == 'test'
       - name: Install Deno from .land
+        if: matrix.os != 'self-hosted'
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
-      # - name: Install Deno from source
-      #   if: matrix.os == 'self-hosted'
-      #   run: |
-      #     echo "Check if Deno is already installed"
-      #     if ! type deno > /dev/null; then
-      #       echo "Deno is not installed, installing..."
-      #       cargo install deno --locked
-      #     else
-      #       echo "Deno is already installed"
-      #     fi
+      - name: Install Deno from source
+        if: matrix.os == 'self-hosted'
+        run: |
+          echo "Check if Deno is already installed"
+          if ! type deno > /dev/null; then
+            echo "Deno is not installed, installing..."
+            cargo install deno --locked
+          else
+            echo "Deno is already installed"
+          fi
       - name: Error on warning
         run: echo "RUSTFLAGS=-D warnings" >> $GITHUB_ENV
       - name: Log versions
@@ -169,12 +174,12 @@ jobs:
           (startsWith(matrix.os, 'ubuntu') ||  startsWith(matrix.os, 'macos')) &&
           (matrix.job == 'test' && matrix.profile == 'debug')
         run: deno task cargo-build --all-targets
-      # - name: Build debug unix arch64
-      #   if: |
-      #     (startsWith(matrix.os, 'self-hosted')) &&
-      #     (matrix.job == 'test' && matrix.profile == 'debug') 
-      #   run: |
-      #     deno task cargo-build-arm
+      - name: Build debug unix arch64
+        if: |
+          (startsWith(matrix.os, 'self-hosted')) &&
+          (matrix.job == 'test' && matrix.profile == 'debug') 
+        run: |
+          deno task cargo-build-arm
       - name: Build debug Windows
         if: |
           runner.os == 'Windows' &&
