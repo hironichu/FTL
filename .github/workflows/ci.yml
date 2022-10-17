@@ -87,7 +87,7 @@ jobs:
         with:
           deno-version: v1.x
       - name: Install Deno from source
-        if: matrix.os == 'self-hosted'
+        if: matrix.os != 'self-hosted'
         run: |
           echo "Check if Deno is already installed"
           if ! type deno > /dev/null; then
