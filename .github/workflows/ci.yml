@@ -203,6 +203,15 @@ jobs:
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
         run: deno task cargo-build --release
+      - name: Build release Unix Aarch64
+        if: |
+          (startsWith(matrix.os, 'self-hosted')) &&
+          (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
+          (github.repository == 'hironichu/FTL' &&
+          (github.ref == 'refs/heads/main' ||
+          startsWith(github.ref, 'refs/tags/'))))
+        run: |
+          deno task cargo-release-arm
       - name: Build release Windows
         if: |
           runner.os == 'Windows' &&
