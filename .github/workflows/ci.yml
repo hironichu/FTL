@@ -47,7 +47,12 @@ jobs:
           - os: 'ubuntu-20.04'
             job: lint
             profile: debug
-
+          - os: 'self-hosted'
+            job: test
+            profile: debug
+          - os: 'self-hosted'
+            job: test
+            profile: release
       fail-fast: ${{ github.event_name == 'pull_request' ||
         (github.ref != 'refs/heads/main' &&
         !startsWith(github.ref, 'refs/tags/')) }}
@@ -82,16 +87,16 @@ jobs:
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
-      # - name: Install Deno from source
-      #   if: matrix.os == 'self-hosted'
-      #   run: |
-      #     echo "Check if Deno is already installed"
-      #     if ! type deno > /dev/null; then
-      #       echo "Deno is not installed, installing..."
-      #       cargo install deno --locked
-      #     else
-      #       echo "Deno is already installed"
-      #     fi
+      - name: Install Deno from source
+        if: matrix.os == 'self-hosted'
+        run: |
+          echo "Check if Deno is already installed"
+          if ! type deno > /dev/null; then
+            echo "Deno is not installed, installing..."
+            cargo install deno --locked
+          else
+            echo "Deno is already installed"
+          fi
       - name: Error on warning
         run: echo "RUSTFLAGS=-D warnings" >> $GITHUB_ENV
       - name: Log versions
@@ -169,12 +174,12 @@ jobs:
           (startsWith(matrix.os, 'ubuntu') ||  startsWith(matrix.os, 'macos')) &&
           (matrix.job == 'test' && matrix.profile == 'debug')
         run: deno task cargo-build --all-targets
-      # - name: Build debug unix arch64
-      #   if: |
-      #     (startsWith(matrix.os, 'self-hosted')) &&
-      #     (matrix.job == 'test' && matrix.profile == 'debug') 
-      #   run: |
-      #     deno task cargo-build-arm
+      - name: Build debug unix arch64
+        if: |
+          (startsWith(matrix.os, 'self-hosted')) &&
+          (matrix.job == 'test' && matrix.profile == 'debug') 
+        run: |
+          deno task cargo-build-arm
       - name: Build debug Windows
         if: |
           runner.os == 'Windows' &&
