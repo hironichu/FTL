@@ -83,11 +83,12 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly   
         if: matrix.job == 'test'
       - name: Install Deno from .land
+        if: matrix.os != 'self-hosted'
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
       - name: Install Deno from source
-        if: matrix.os != 'self-hosted'
+        if: matrix.os == 'self-hosted'
         run: |
           echo "Check if Deno is already installed"
           if ! type deno > /dev/null; then
