@@ -8,7 +8,6 @@ use core::panic;
 use futures_util::{pin_mut, select, FutureExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
-use std::ffi::CString;
 use std::net::SocketAddr;
 use urls::ServerAddrs;
 use util::{parse_server_url, url_to_socket_addr};
@@ -35,11 +34,11 @@ pub struct Socket {
   /// The current MessageType
   pub message_type: Option<MessageType>,
   /// Sender to send messages to the server
-  to_client_sender: Option<flume::Sender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  to_client_sender: Option<kanal::AsyncSender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
   /// Receiver to receive messages from the server
-  to_client_receiver: Option<flume::Receiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
-  from_client_sender: Option<flume::Sender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
-  from_client_receiver: Option<flume::Receiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  to_client_receiver: Option<kanal::AsyncReceiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  from_client_sender: Option<kanal::AsyncSender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  from_client_receiver: Option<kanal::AsyncReceiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
   pub state: Option<bool>,
 }
 ///
@@ -65,8 +64,8 @@ impl Socket {
       sender_fn,
     ) {
       Ok(server) => {
-        let (to_client_sender, to_client_receiver) = flume::unbounded();
-        let (from_client_sender, from_client_receiver) = flume::unbounded();
+        let (to_client_sender, to_client_receiver) = kanal::unbounded_async();
+        let (from_client_sender, from_client_receiver) = kanal::unbounded_async();
         Ok(Self {
           state: Some(true),
           server: Some(server),
@@ -123,13 +122,9 @@ impl Socket {
             Some(server) => server,
             None => return,
           };
+          let receiver = self.to_client_receiver.as_mut().unwrap();
           let next = {
-            let to_client_receiver_next = self
-              .to_client_receiver
-              .as_ref()
-              .unwrap()
-              .recv_async()
-              .fuse();
+            let to_client_receiver_next = receiver.recv().fuse();
             let from_client_message_receiver_next = rtc_server.recv().fuse();
             pin_mut!(to_client_receiver_next);
             pin_mut!(from_client_message_receiver_next);
@@ -143,7 +138,7 @@ impl Socket {
                         Err(err) => {
                             Err(ErrorMessage {
                                 code: 1,
-                                message: CString::new(format!("{}", err)).unwrap(),
+                                message: err.to_string(),
                             })
                         }
                       }
@@ -158,9 +153,7 @@ impl Socket {
             Next::FromClientMessage(from_client_message) => match from_client_message {
               Ok((address, payload, message_type)) => {
                 let sender = self.from_client_sender.as_ref().unwrap();
-                let _ = sender
-                  .send_async((address, payload, Some(message_type)))
-                  .await;
+                let _ = sender.send((address, payload, Some(message_type)));
               }
               Err(_) => {}
             },
@@ -228,7 +221,7 @@ impl Socket {
     }
     true
   }
-  pub fn sender(&self) -> flume::Sender<(SocketAddr, Box<[u8]>, Option<MessageType>)> {
+  pub fn sender(&self) -> kanal::AsyncSender<(SocketAddr, Box<[u8]>, Option<MessageType>)> {
     return self.to_client_sender.as_ref().unwrap().clone();
   }
 
@@ -308,7 +301,13 @@ pub unsafe extern "C" fn rtc_recv(
   if !server.state.unwrap() {
     return 2;
   }
-  match server.from_client_receiver.as_ref().unwrap().recv() {
+  match server
+    .from_client_receiver
+    .as_ref()
+    .unwrap()
+    .clone_sync()
+    .recv()
+  {
     Ok((addr, message, _)) => {
       let addrslice = addr.to_string();
       ::std::slice::from_raw_parts_mut(buff, message.len()).copy_from_slice(&message);
@@ -344,7 +343,7 @@ pub unsafe extern "C" fn rtc_send(
     1 => MessageType::Binary,
     _ => server.message_type.unwrap(),
   };
-  match server.to_client_sender.as_ref().unwrap().send((
+  match server.to_client_sender.as_ref().unwrap().try_send((
     addr,
     buf.to_vec().into_boxed_slice(),
     Some(message_type),

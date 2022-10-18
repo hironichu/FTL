@@ -261,11 +261,12 @@ dependencies = [
 
 [[package]]
 name = "ftl"
-version = "0.2.1"
+version = "0.2.5"
 dependencies = [
  "flume",
  "futures-channel",
  "futures-util",
+ "kanal",
  "num_cpus",
  "once_cell",
  "serde",
@@ -442,6 +443,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49409df3e3bf0856b916e2ceaca09ee28e6871cf7d9ce97a692cacfdb2a25a47"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kanal"
+version = "0.1.0-pre1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bec74d6fb49fafe0f1c3c168a9e793e363a5a2be763c52c564c76bc45b5c22fb"
+dependencies = [
+ "lock_api",
+ "pin-project-lite",
 ]
 
 [[package]]
@@ -910,10 +921,10 @@ dependencies = [
  "byteorder",
  "crc",
  "futures",
- "futures-channel",
  "futures-core",
  "futures-util",
  "hashbrown",
+ "kanal",
  "openssl",
  "rand",
  "serde",
