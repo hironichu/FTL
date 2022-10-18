@@ -27,7 +27,25 @@ const ftl = await RTCServer({
   public: ip ?? "127.0.0.1",
 } as any, true);
 
+//You can use any way you want to start a session,
+//it can be a simple http server or a websocket server.
+//On the client side you can start a WebRTC connection using the following code:
+// let peer = new RTCPeerConnection({
+//   iceCandidatePoolSize: 16,
+//   bundlePolicy : "balanced"
+// });
+//
+// let channel = peer.createDataChannel("data", {
+//   ordered: false,
+//   maxPacketLifeTime: 0,
+//   maxRetransmits: 0,
+// });
+// .. The rest is standard datachannel processing, see /examples for more info.
 
+//Thie method will save a new Session Descriptor for any incoming webrtc connection. the argument is a string.
+const answer = ftl.session("...")
+///answer = { type: "answer"; sdp: string }
+//you can then send this pack to the browser and add it to the remote SessionDescription. (see )
 // Listening for the different event
 ftl.on("event", (evt) => {});
 ftl.on("message", (data, addr) => {});

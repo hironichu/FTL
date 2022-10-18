@@ -1,6 +1,6 @@
 [package]
 name = "ftl"
-version = "0.2.1"
+version = "0.2.5"
 edition = "2021"
 
 [lib]
@@ -19,7 +19,7 @@ smol = { version = "1.2.4" }
 once_cell = { version = "1.4.1" }
 flume = "0.10.13"
 num_cpus = "1.13.1"
-
+kanal = {version = "0.1.0-pre1", features = ["async"]}
 
 [profile.release]
 strip = true

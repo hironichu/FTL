@@ -40,7 +40,7 @@
     "clean": "deno run --allow-write --allow-read ./utils/clean.ts",
     "cargo-build": "cargo build --out-dir ./dist -Z unstable-options",
     "cargo-release-arm": "cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/libftl.so ./dist/libftl_aarch64.so",
-    "cargo-build-arm": "cargo build --out-dir ./dist -Z unstable-options --locked  && mv ./dist/libftl.so ./dist/libftl_aarch64.so",
+    "cargo-build-arm": "cargo build --out-dir ./dist -Z unstable-options  && mv ./dist/libftl.so ./dist/libftl_aarch64.so",
     "debug-run": "deno run -A --unstable ./test/server.ts",
     "build": "deno task cargo-build && deno task clean && deno task lint && deno task fmt && deno task test",
     "build-release": "deno task cargo-build --release && deno task clean && deno task lint && deno task fmt && deno task test",

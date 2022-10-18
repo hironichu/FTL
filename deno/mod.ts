@@ -2,6 +2,7 @@ import { decode, encode, validHostPort, validIp, validPort } from "./utils.ts";
 import library from "./lib.ts";
 import { CODE_STATE, STATE } from "./dict.ts";
 import { EventEmitter } from "./deps.ts";
+
 export type SocketEndpoint = {
   rtc_addr: string;
   rtc_endpoint: string;

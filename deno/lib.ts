@@ -1,4 +1,4 @@
-import { toFileUrl } from "https://deno.land/std@0.158.0/path/mod.ts";
+import { toFileUrl } from "./deps.ts";
 let DLURL: URL;
 let local: boolean;
 let download_lib: URL;
