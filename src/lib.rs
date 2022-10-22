@@ -5,13 +5,14 @@ pub mod executor;
 pub mod urls;
 pub mod util;
 use core::panic;
+use flume::{Receiver, Sender};
 use futures_util::{pin_mut, select, FutureExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use std::net::SocketAddr;
+use unreliablertc::{ErrorMessage, MessageType, Server};
 use urls::ServerAddrs;
 use util::{parse_server_url, url_to_socket_addr};
-use webrtc_unreliable::{ErrorMessage, MessageType, Server};
 static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
 static mut DEBUG: bool = false;
 
@@ -34,11 +35,11 @@ pub struct Socket {
   /// The current MessageType
   pub message_type: Option<MessageType>,
   /// Sender to send messages to the server
-  to_client_sender: Option<kanal::AsyncSender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  to_client_sender: Option<Sender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
   /// Receiver to receive messages from the server
-  to_client_receiver: Option<kanal::AsyncReceiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
-  from_client_sender: Option<kanal::AsyncSender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
-  from_client_receiver: Option<kanal::AsyncReceiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  to_client_receiver: Option<Receiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  from_client_sender: Option<Sender<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
+  from_client_receiver: Option<Receiver<(SocketAddr, Box<[u8]>, Option<MessageType>)>>,
   pub state: Option<bool>,
 }
 ///
@@ -64,8 +65,8 @@ impl Socket {
       sender_fn,
     ) {
       Ok(server) => {
-        let (to_client_sender, to_client_receiver) = kanal::unbounded_async();
-        let (from_client_sender, from_client_receiver) = kanal::unbounded_async();
+        let (to_client_sender, to_client_receiver) = flume::unbounded();
+        let (from_client_sender, from_client_receiver) = flume::unbounded();
         Ok(Self {
           state: Some(true),
           server: Some(server),
@@ -124,7 +125,7 @@ impl Socket {
           };
           let receiver = self.to_client_receiver.as_mut().unwrap();
           let next = {
-            let to_client_receiver_next = receiver.recv().fuse();
+            let to_client_receiver_next = receiver.recv_async().fuse();
             let from_client_message_receiver_next = rtc_server.recv().fuse();
             pin_mut!(to_client_receiver_next);
             pin_mut!(from_client_message_receiver_next);
@@ -221,7 +222,7 @@ impl Socket {
     }
     true
   }
-  pub fn sender(&self) -> kanal::AsyncSender<(SocketAddr, Box<[u8]>, Option<MessageType>)> {
+  pub fn sender(&self) -> Sender<(SocketAddr, Box<[u8]>, Option<MessageType>)> {
     return self.to_client_sender.as_ref().unwrap().clone();
   }
 
@@ -301,13 +302,7 @@ pub unsafe extern "C" fn rtc_recv(
   if !server.state.unwrap() {
     return 2;
   }
-  match server
-    .from_client_receiver
-    .as_ref()
-    .unwrap()
-    .clone_sync()
-    .recv()
-  {
+  match server.from_client_receiver.as_ref().unwrap().recv() {
     Ok((addr, message, _)) => {
       let addrslice = addr.to_string();
       ::std::slice::from_raw_parts_mut(buff, message.len()).copy_from_slice(&message);
