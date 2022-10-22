@@ -10,7 +10,7 @@ bench = false
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-webrtc-unreliable = { path = "./webrtc-unreliable" }
+unreliablertc = { path = "./unreliablertc" }
 url = { version = "2.2.2" }
 serde_json = "1.0"
 futures-util = { version = "0.3", features = ["sink"] }

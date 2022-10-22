@@ -10,9 +10,9 @@ use futures_util::{pin_mut, select, FutureExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use std::net::SocketAddr;
+use unreliablertc::{ErrorMessage, MessageType, Server};
 use urls::ServerAddrs;
 use util::{parse_server_url, url_to_socket_addr};
-use webrtc_unreliable::{ErrorMessage, MessageType, Server};
 static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
 static mut DEBUG: bool = false;
 
