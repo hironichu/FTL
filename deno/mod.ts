@@ -200,7 +200,7 @@ export class Socket extends EventEmitter<SocketEvents> {
         this.#STATE,
       );
     } catch (e) {
-      console.error(e);
+      console.error(Error, e);
       if (this.debug) {
         this.emit("error", new ErrorEvent("send_err", { error: e.message }));
       }
