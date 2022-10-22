@@ -1,3 +1,5 @@
+[![FTL CI](https://github.com/hironichu/FTL/actions/workflows/ci.yml/badge.svg)](https://github.com/hironichu/FTL/actions/workflows/ci.yml)
+
 # <center>FTL </center>
 
 FTL (Faster Than Light) is a non standard WebRTC implementation for Deno.
