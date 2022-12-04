@@ -1,7 +1,9 @@
 use num_cpus;
 use once_cell::sync::Lazy;
 use smol::{block_on, future, Executor, Task};
-use std::{future::Future, panic::catch_unwind, thread};
+use std::{future::Future, thread};
+
+// Runs the given future on the global executor, spawning a new thread if necessary.
 
 pub fn spawn<T: Send + 'static>(future: impl Future<Output = T> + Send + 'static) -> Task<T> {
   static GLOBAL: Lazy<Executor<'_>> = Lazy::new(|| {
@@ -9,7 +11,7 @@ pub fn spawn<T: Send + 'static>(future: impl Future<Output = T> + Send + 'static
       thread::Builder::new()
         .name(format!("ftlt-{}", n))
         .spawn(|| loop {
-          catch_unwind(|| block_on(GLOBAL.run(future::pending::<()>()))).ok();
+          block_on(GLOBAL.run(future::pending::<()>()))
         })
         .expect("cannot spawn executor thread");
     }

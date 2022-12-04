@@ -14,7 +14,7 @@ unreliablertc = { path = "./unreliablertc" }
 url = { version = "2.2.2" }
 serde_json = "1.0"
 futures-util = { version = "0.3", features = ["sink"] }
-smol = { version = "1.2.4" }
+smol = { version = "1.2.5" }
 once_cell = { version = "1.4.1" }
 flume = "0.10.14"
 num_cpus = "1.13.1"
