@@ -123,7 +123,7 @@ export class Socket extends EventEmitter<SocketEvents> {
       endpoint,
       endpoint.byteLength,
       this.#sender.pointer,
-      this.debug ? 1 : 0,
+      this.debug,
       this.#STATE,
     );
 

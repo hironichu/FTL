@@ -44,7 +44,7 @@ switch (Deno.build.os) {
 }
 const symbols = {
   start: {
-    parameters: ["buffer", "u32", "function", "u32", "buffer"],
+    parameters: ["buffer", "u32", "function", "bool", "buffer"],
     result: "pointer",
     callback: true,
   },

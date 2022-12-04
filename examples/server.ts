@@ -1,11 +1,11 @@
 // deno-lint-ignore-file
 // deno-fmt-ignore-file
-import { serve } from "https://deno.land/std@0.158.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 import {RTCServer} from "../deno/mod.ts";
 const ftl = await RTCServer({
   host: "0.0.0.0",
   port: 9595,
-  public: Deno.networkInterfaces().find(iface => (iface.name === "eth0" || iface.name === "Ethernet" || iface.name === "en0") && iface.family === "IPv4")?.address,
+  public: Deno.networkInterfaces().find(iface => (iface.name === "eth0" || iface.name === "Ethernet" || iface.name === "en0") && iface.family === "IPv4")?.address ?? "127.0.0.1",
   mode: "core"
 });
 

@@ -8,7 +8,6 @@ use core::panic;
 use flume::{Receiver, Sender};
 use futures_util::{pin_mut, select, FutureExt};
 use serde::{Deserialize, Serialize};
-use serde_json::Error;
 use std::net::SocketAddr;
 use unreliablertc::{ErrorMessage, MessageType, Server};
 use urls::ServerAddrs;
@@ -16,6 +15,10 @@ use util::{parse_server_url, url_to_socket_addr};
 static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
 static mut DEBUG: bool = false;
 
+enum Next {
+  FromClientMessage(Result<(SocketAddr, Box<[u8]>, MessageType), ErrorMessage>),
+  ToClientMessage((SocketAddr, Box<[u8]>, Option<MessageType>)),
+}
 // @TODO(hironichu) Add Error code numbers into Deno to add more error context.
 
 /// A struct that holds the necessary information to set up a WebRTC Server
@@ -111,10 +114,6 @@ impl Socket {
       return;
     } else {
       executor::spawn(async move {
-        enum Next {
-          FromClientMessage(Result<(SocketAddr, Box<[u8]>, MessageType), ErrorMessage>),
-          ToClientMessage((SocketAddr, Box<[u8]>, Option<MessageType>)),
-        }
         loop {
           if !self.state.unwrap() {
             return;
@@ -247,46 +246,40 @@ pub unsafe extern "C" fn start(
   endpoint_buf: *const u8,
   len: u32,
   send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
-  debug: u32,
+  debug: bool,
   res: *mut u32,
 ) -> *mut Socket {
   let buf = ::std::slice::from_raw_parts(endpoint_buf, len as usize);
-  let endpoint_json: Result<SocketEndpoint, Error> = serde_json::from_slice(buf);
-  if send_func.is_none() {
-    *res = 1;
-    return Box::into_raw(Box::new(Socket::empty()));
-  }
-  DEBUG = if debug == 1 { true } else { false };
-  match endpoint_json {
-    Ok(json) => {
-      let addr = json.rtc_addr.parse::<SocketAddr>();
-      match addr {
-        Ok(addr) => {
-          let server_address = ServerAddrs::new(addr, &json.rtc_endpoint);
-          let server = Socket::new(server_address, send_func);
-          match server {
-            Ok(server) => {
-              let server_ptr = Box::into_raw(Box::new(server));
-              let server = &mut *server_ptr;
-              server.receive();
-              *res = 0;
-              server_ptr
-            }
-            Err(_) => {
-              *res = 2;
-              Box::into_raw(Box::new(Socket::empty()))
-            }
-          }
-        }
-        Err(_) => {
-          *res = 3;
-          return Box::into_raw(Box::new(Socket::empty()));
-        }
-      }
+  let addrjson = serde_json::from_slice(buf);
+  DEBUG = debug;
+  let addrjson: SocketEndpoint = match addrjson {
+    Ok(addr) => addr,
+    Err(_) => {
+      *res = 1;
+      return std::ptr::null_mut();
+    }
+  };
+  let addr = addrjson.rtc_addr.parse::<SocketAddr>();
+  let addr = match addr {
+    Ok(addr) => addr,
+    Err(_) => {
+      *res = 2;
+      return std::ptr::null_mut();
+    }
+  };
+  let server_address = ServerAddrs::new(addr, &addrjson.rtc_endpoint);
+  let server = Socket::new(server_address, send_func);
+  match server {
+    Ok(server) => {
+      let server_ptr = Box::into_raw(Box::new(server));
+      let server = &mut *server_ptr;
+      server.receive();
+      *res = 0;
+      server_ptr
     }
     Err(_) => {
-      *res = 4;
-      Box::into_raw(Box::new(Socket::empty()))
+      *res = 2;
+      std::ptr::null_mut()
     }
   }
 }
@@ -299,6 +292,7 @@ pub unsafe extern "C" fn rtc_recv(
   addrlength: *mut u32,
 ) -> u32 {
   let server = &mut *srv;
+
   if !server.state.unwrap() {
     return 2;
   }
@@ -327,9 +321,9 @@ pub unsafe extern "C" fn rtc_send(
   state: *mut u32,
 ) {
   let server = &mut *srv;
-  let buf = ::std::slice::from_raw_parts(msgbuff, msglen as usize);
+  let buf = unsafe { ::std::slice::from_raw_parts(msgbuff, msglen as usize) };
   let addr = {
-    let addrstr = ::std::slice::from_raw_parts(addrbuff, addrlen as usize);
+    let addrstr = unsafe { ::std::slice::from_raw_parts(addrbuff, addrlen as usize) };
     ::std::str::from_utf8(addrstr).unwrap()
   };
   let addr = SocketAddr::new(addr.parse().unwrap(), port);
