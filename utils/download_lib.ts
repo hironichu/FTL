@@ -7,7 +7,7 @@ const data = await fetch(
   },
 );
 const json = await data.json();
-let GitDLUrL: URL = new URL("");
+let GitDLUrL: URL = new URL("http://localhost");
 switch (Deno.build.os) {
   case "windows":
     GitDLUrL = new URL(
