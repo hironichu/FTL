@@ -46,14 +46,14 @@ type SocketEvents = {
  */
 export class Socket extends EventEmitter<SocketEvents> {
   #SocketEndpoint?: SocketEndpoint;
-  #PTR = 0n;
+  #PTR: Deno.PointerValue = null;
   #STATE = new Uint32Array(1);
   dec = decode;
   enc = encode;
   public get state(): number {
     return this.#STATE[0];
   }
-  public get ptr(): bigint {
+  public get ptr(): Deno.PointerValue {
     return this.#PTR;
   }
   public get sender() {
@@ -69,12 +69,11 @@ export class Socket extends EventEmitter<SocketEvents> {
       if (buflen < 0) {
         return;
       }
-      const pointer = new Deno.UnsafePointerView(buffer as bigint);
-      const result = this.dec(
-        new Uint8Array(
-          pointer.getArrayBuffer(buflen as number),
-        ),
+      const pointer = Deno.UnsafePointerView.getArrayBuffer(
+        buffer as unknown as NonNullable<Deno.PointerValue>,
+        buflen,
       );
+      const result = this.dec(new Uint8Array(pointer));
       if (code < 100) {
         this.emit(
           "error",
@@ -116,7 +115,7 @@ export class Socket extends EventEmitter<SocketEvents> {
     ..._opts: unknown[]
   ): Promise<Socket> {
     if (!this.#LIB) throw new Error("Library not loaded");
-    if (this.#PTR !== 0n) throw new Error("Socket already started");
+    if (this.#PTR !== null) throw new Error("Socket already started");
     this.#SocketEndpoint = this.#endpoint(endpoint_config);
     const endpoint = encode(JSON.stringify(this.#SocketEndpoint));
     const startPTR = await this.#LIB!.symbols.start(
@@ -128,7 +127,7 @@ export class Socket extends EventEmitter<SocketEvents> {
     );
 
     if (this.#STATE[0] === 0) {
-      this.#PTR = startPTR as bigint;
+      this.#PTR = startPTR;
       this.#sender.ref();
       Promise.all([
         (async () => {
@@ -142,7 +141,7 @@ export class Socket extends EventEmitter<SocketEvents> {
             maxaddrlen,
           );
           while (nread > 0) {
-            if (this.ptr === 0n) return;
+            if (this.ptr === null) return;
             const address = decode(addr.subarray(0, maxaddrlen[0])).split(":");
             this.emit("message", buffer.subarray(0, nread as number), {
               hostname: address[0],
@@ -182,7 +181,7 @@ export class Socket extends EventEmitter<SocketEvents> {
     caddr: Deno.NetAddr,
     type = MessageType.Binary,
   ): void {
-    if (this.#PTR === 0n) throw new Error("Socket not started");
+    if (this.#PTR === null) throw new Error("Socket not started");
     const addr = encode(caddr.hostname);
     if (typeof buf === "string") {
       buf = encode(buf);
@@ -244,7 +243,7 @@ export class Socket extends EventEmitter<SocketEvents> {
    * @see {@link https://ftl.ekko.pw/#session @Socket.session()}
    */
   public session(offer: string): { type: "answer"; sdp: string } | Error {
-    if (this.#PTR === 0n) throw new Error("Socket not started");
+    if (this.#PTR === null) throw new Error("Socket not started");
     const sdp_buf = encode(offer);
     const resbuf = new Uint8Array(2048);
     const result = this.#LIB.symbols.session(
@@ -267,14 +266,14 @@ export class Socket extends EventEmitter<SocketEvents> {
     };
   }
   public clients_count(): number | Error {
-    if (this.#PTR === 0n) throw new Error("Socket not started");
+    if (this.#PTR === null) throw new Error("Socket not started");
     // clients_count
     const result = this.#LIB.symbols.clients_count(this.#PTR);
     // console.log(result);
     return result as number;
   }
   public clients() {
-    if (this.#PTR === 0n) throw new Error("Socket not started");
+    if (this.#PTR === null) throw new Error("Socket not started");
     const buffer = new Uint8Array(1024);
     const nread = this.#LIB.symbols.clients(this.#PTR, buffer);
     const result = buffer.subarray(0, nread as number);
@@ -290,9 +289,9 @@ export class Socket extends EventEmitter<SocketEvents> {
     }, new Set<Deno.NetAddr>());
   }
   public async close() {
-    if (this.#PTR === 0n) throw new Error("Socket not started");
+    if (this.#PTR === null) throw new Error("Socket not started");
     await this.#LIB.symbols.rtc_close(this.#PTR);
-    this.#PTR = 0n;
+    this.#PTR = null;
     this.#sender.close();
     this.emit("close", new CloseEvent("close"));
     return true;
