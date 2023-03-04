@@ -4,7 +4,8 @@
   "deno.enablePaths": [
     "./deno",
     "./test",
-    "./examples"
+    "./examples",
+    "./utils",
   ],
   "deno.unstable": true,
   "deno.lint": true,
