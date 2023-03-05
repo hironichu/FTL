@@ -7,36 +7,23 @@ const data = await fetch(
   },
 );
 const json = await data.json();
-let GitDLUrL: URL = new URL("");
+let GitDLUrL: URL;
 switch (Deno.build.os) {
   case "windows":
-    GitDLUrL = new URL(
-      json[0].assets.filter((item: { name: string }) =>
-        item.name.endsWith(".dll")
-      )[0].url,
-    );
+    GitDLUrL = new URL(json[0].assets.filter((item: { name: string}) => item.name.endsWith(".dll"))[0].url);
     break;
-  case "linux":
-    {
+    case "linux": {
       let filename = "libftl";
       if (Deno.build.arch === "aarch64") {
         filename = "libftl_aarch64.so";
-      } else {
+      } else { 
         filename = "libftl.so";
       }
-      GitDLUrL = new URL(
-        json[0].assets.filter((item: { name: string }) =>
-          item.name === filename
-        )[0].url,
-      );
+      GitDLUrL = new URL(json[0].assets.filter((item: { name: string}) => item.name === filename)[0].url);
     }
     break;
   case "darwin":
-    GitDLUrL = new URL(
-      json[0].assets.filter((item: { name: string }) =>
-        item.name.endsWith(".dylib")
-      )[0].url,
-    );
+    GitDLUrL = new URL(json[0].assets.filter((item: { name: string}) => item.name.endsWith(".dylib"))[0].url);
     break;
 }
 export default GitDLUrL;

@@ -1,5 +1,5 @@
 import { toFileUrl } from "./deps.ts";
-let DLURL: URL = new URL("http://localhost");
+let DLURL: URL;
 let local: boolean;
 let download_lib: URL;
 
@@ -84,7 +84,7 @@ const symbols = {
     nonblocking: true,
     result: "void",
   },
-} as const;
+} as Record<string, Deno.ForeignFunction>;
 if (!local) {
   const remoteLIb = await fetch(download_lib, {
     headers: {

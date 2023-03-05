@@ -17,10 +17,8 @@ export function decode(v: Uint8Array): string {
  * Reads a pointer from a pointer array
  * @param v The pointer object
  */
-export function readPointer(v: Deno.PointerValue): Uint8Array {
-  const ptr = new Deno.UnsafePointerView(
-    v as unknown as NonNullable<Deno.PointerValue>,
-  );
+export function readPointer(v: bigint): Uint8Array {
+  const ptr = new Deno.UnsafePointerView(v);
   const lengthBe = new Uint8Array(4);
   const view = new DataView(lengthBe.buffer);
   ptr.copyInto(lengthBe, 0);

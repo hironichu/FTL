@@ -9,7 +9,6 @@
       "include": [
         "deno/",
         "test/",
-        "utils/",
         "examples/"
       ],
       "exclude": [
@@ -22,7 +21,6 @@
       "include": [
         "deno/",
         "test/",
-        "utils/",
         "examples/"
       ],
       "exclude": [
